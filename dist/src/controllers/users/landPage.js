@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createContactMessage = exports.getToursWithEssentialInfo = exports.applyPromoCode = exports.getRejectedMedicalRequests = exports.getAcceptMedicalRequests = exports.getMedicalCategories = exports.createMedical = exports.getBookingWithDetails = exports.createBookingWithPayment = exports.getActivePaymentMethods = exports.getTourById = exports.getToursByCategory = exports.getFeaturedTours = exports.getImages = exports.formatDate = void 0;
+exports.getToursWithEssentialInfo = exports.applyPromoCode = exports.getRejectedMedicalRequests = exports.getAcceptMedicalRequests = exports.getMedicalCategories = exports.createMedical = exports.getBookingWithDetails = exports.createBookingWithPayment = exports.getActivePaymentMethods = exports.getTourById = exports.getToursByCategory = exports.getFeaturedTours = exports.getImages = exports.formatDate = void 0;
 const db_1 = require("../../models/db");
 const schema_1 = require("../../models/schema");
 const drizzle_orm_1 = require("drizzle-orm");
@@ -400,33 +400,35 @@ const createBookingWithPayment = (req, res) => __awaiter(void 0, void 0, void 0,
                 });
             }
         }
-        // Promo code logic (unchanged)
-        const promoCodeData = yield db_1.db
-            .select({
-            id: schema_1.promoCode.id,
-            code: schema_1.promoCode.code,
-            usageLimit: schema_1.promoCode.usageLimit,
-            status: schema_1.promoCode.status,
-            startDate: schema_1.promoCode.startDate,
-            endDate: schema_1.promoCode.endDate,
-            tourPromoCodeId: schema_1.tourPromoCode.id,
-            tourId: schema_1.tourPromoCode.tourId
-        })
-            .from(schema_1.tourPromoCode)
-            .leftJoin(schema_1.promoCode, (0, drizzle_orm_1.eq)(schema_1.promoCode.id, schema_1.tourPromoCode.promoCodeId))
-            .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.tourPromoCode.tourId, actualTourId), (0, drizzle_orm_1.eq)(schema_1.promoCode.id, promoCodeIdNum)));
-        if (promoCodeData && promoCodeData.length > 0) {
-            const promo = promoCodeData[0];
-            if (promo.usageLimit === null || promo.usageLimit === undefined) {
-                throw new Error("Promo code usage limit is invalid");
-            }
-            if (promo.usageLimit > 0) {
-                yield db_1.db.update(schema_1.promoCode)
-                    .set({ usageLimit: promo.usageLimit - 1 })
-                    .where((0, drizzle_orm_1.eq)(schema_1.promoCode.id, promo.id));
-            }
-            else {
-                console.warn("Promo code usage limit reached or exceeded");
+        // Promo code logic - only run if a promo code ID was provided
+        if (promoCodeIdNum !== null) {
+            const promoCodeData = yield db_1.db
+                .select({
+                id: schema_1.promoCode.id,
+                code: schema_1.promoCode.code,
+                usageLimit: schema_1.promoCode.usageLimit,
+                status: schema_1.promoCode.status,
+                startDate: schema_1.promoCode.startDate,
+                endDate: schema_1.promoCode.endDate,
+                tourPromoCodeId: schema_1.tourPromoCode.id,
+                tourId: schema_1.tourPromoCode.tourId
+            })
+                .from(schema_1.tourPromoCode)
+                .leftJoin(schema_1.promoCode, (0, drizzle_orm_1.eq)(schema_1.promoCode.id, schema_1.tourPromoCode.promoCodeId))
+                .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.tourPromoCode.tourId, actualTourId), (0, drizzle_orm_1.eq)(schema_1.promoCode.id, promoCodeIdNum)));
+            if (promoCodeData && promoCodeData.length > 0) {
+                const promo = promoCodeData[0];
+                if (promo.usageLimit === null || promo.usageLimit === undefined) {
+                    throw new Error("Promo code usage limit is invalid");
+                }
+                if (promo.usageLimit > 0) {
+                    yield db_1.db.update(schema_1.promoCode)
+                        .set({ usageLimit: promo.usageLimit - 1 })
+                        .where((0, drizzle_orm_1.eq)(schema_1.promoCode.id, promo.id));
+                }
+                else {
+                    console.warn("Promo code usage limit reached or exceeded");
+                }
             }
         }
         // Start transaction
@@ -775,7 +777,7 @@ const createMedical = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             throw new Error('Failed to create medical record');
         }
         // Create category associations
-        yield db_1.db.insert(schema_1.medicalCategories).values(data.categoryIds.map(categoryId => ({
+        yield db_1.db.insert(schema_1.medicalCategories).values(data.categoryIds.map((categoryId) => ({
             medicalId: medicalId,
             categoryId: categoryId,
         })));
@@ -1053,6 +1055,7 @@ const applyPromoCode = (req, res) => __awaiter(void 0, void 0, void 0, function*
 exports.applyPromoCode = applyPromoCode;
 const getToursWithEssentialInfo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const currentDate = new Date();
+    // Fetch tours WITHOUT joining tourPrice to avoid row duplication
     const toursList = yield db_1.db
         .select({
         id: schema_1.tours.id,
@@ -1062,24 +1065,41 @@ const getToursWithEssentialInfo = (req, res) => __awaiter(void 0, void 0, void 0
         endDate: schema_1.tours.endDate,
         country: schema_1.countries.name,
         city: schema_1.cites.name,
-        price: {
-            adult: schema_1.tourPrice.adult,
-            child: schema_1.tourPrice.child,
-            infant: schema_1.tourPrice.infant,
-            currency: schema_1.currencies.name
-        },
     })
         .from(schema_1.tours)
         .leftJoin(schema_1.categories, (0, drizzle_orm_1.eq)(schema_1.tours.categoryId, schema_1.categories.id))
-        .leftJoin(schema_1.tourPrice, (0, drizzle_orm_1.eq)(schema_1.tours.id, schema_1.tourPrice.tourId))
-        .leftJoin(schema_1.currencies, (0, drizzle_orm_1.eq)(schema_1.tourPrice.currencyId, schema_1.currencies.id))
         .leftJoin(schema_1.cites, (0, drizzle_orm_1.eq)(schema_1.cites.id, schema_1.tours.city))
         .leftJoin(schema_1.countries, (0, drizzle_orm_1.eq)(schema_1.countries.id, schema_1.tours.country))
         .where((0, drizzle_orm_1.and)((0, drizzle_orm_1.eq)(schema_1.tours.status, true), // Only get active tours
     (0, drizzle_orm_1.gt)(schema_1.tours.endDate, currentDate) // Only tours that haven't ended yet
     ));
+    const tourIds = toursList.map(t => t.id);
+    // Fetch prices separately to avoid duplication
+    const allPrices = tourIds.length > 0 ? yield db_1.db
+        .select({
+        tourId: schema_1.tourPrice.tourId,
+        adult: schema_1.tourPrice.adult,
+        child: schema_1.tourPrice.child,
+        infant: schema_1.tourPrice.infant,
+        currency: schema_1.currencies.name,
+    })
+        .from(schema_1.tourPrice)
+        .leftJoin(schema_1.currencies, (0, drizzle_orm_1.eq)(schema_1.tourPrice.currencyId, schema_1.currencies.id))
+        .where((0, drizzle_orm_1.inArray)(schema_1.tourPrice.tourId, tourIds)) : [];
+    // Group prices by tourId (take the first price entry per tour)
+    const pricesByTourId = allPrices.reduce((acc, price) => {
+        if (!acc[price.tourId]) {
+            acc[price.tourId] = {
+                adult: price.adult,
+                child: price.child,
+                infant: price.infant,
+                currency: price.currency,
+            };
+        }
+        return acc;
+    }, {});
     // Get schedules for all tours in one query
-    const allSchedules = yield db_1.db
+    const allSchedules = tourIds.length > 0 ? yield db_1.db
         .select({
         tourId: schema_1.tourSchedules.tourId,
         id: schema_1.tourSchedules.id,
@@ -1089,7 +1109,7 @@ const getToursWithEssentialInfo = (req, res) => __awaiter(void 0, void 0, void 0
         endDate: schema_1.tourSchedules.endDate,
     })
         .from(schema_1.tourSchedules)
-        .where((0, drizzle_orm_1.inArray)(schema_1.tourSchedules.tourId, toursList.map(t => t.id)));
+        .where((0, drizzle_orm_1.inArray)(schema_1.tourSchedules.tourId, tourIds)) : [];
     // Group schedules by tourId and filter by current date
     const schedulesByTourId = allSchedules.reduce((acc, schedule) => {
         // Only include schedules with date > current date
@@ -1107,7 +1127,7 @@ const getToursWithEssentialInfo = (req, res) => __awaiter(void 0, void 0, void 0
         }
         return acc;
     }, {});
-    // Combine tours with their filtered schedules
+    // Combine tours with their prices and filtered schedules
     const toursWithSchedules = toursList.map(tour => ({
         id: tour.id,
         title: tour.title,
@@ -1116,39 +1136,37 @@ const getToursWithEssentialInfo = (req, res) => __awaiter(void 0, void 0, void 0
         endDate: tour.endDate,
         country: tour.country,
         city: tour.city,
-        price: tour.price,
-        schedules: schedulesByTourId[tour.id] || [] // Will be empty array if no future schedules
+        price: pricesByTourId[tour.id] || null,
+        schedules: schedulesByTourId[tour.id] || []
     }));
     (0, response_1.SuccessResponse)(res, toursWithSchedules, 200);
 });
 exports.getToursWithEssentialInfo = getToursWithEssentialInfo;
-const createContactMessage = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const { name, email, phone, message } = req.body;
-        // Validate required fields
-        if (!name || !email || !message) {
-            return ErrorResponse(res, 400, "Name, email, and message are required");
-        }
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return ErrorResponse(res, 400, "Please provide a valid email address");
-        }
-        // Insert the contact message
-        const [newContact] = yield db_1.db.insert(schema_1.contactus).values({
-            name,
-            email,
-            phone: phone || null,
-            message,
-        }).execute();
-        (0, response_1.SuccessResponse)(res, {
-            id: newContact.insertId,
-            message: "Contact message submitted successfully"
-        }, 201);
-    }
-    catch (error) {
-        console.error("Error creating contact message:", error);
-        ErrorResponse(res, "Failed to submit contact message", 500);
-    }
-});
-exports.createContactMessage = createContactMessage;
+// export const createContactMessage = async (req: Request, res: Response) => {
+//   try {
+//     const { name, email, phone, message } = req.body;
+//     // Validate required fields
+//     if (!name || !email || !message) {
+//       return ErrorResponse(res, 400, "Name, email, and message are required");
+//     }
+//     // Validate email format
+//     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+//     if (!emailRegex.test(email)) {
+//       return ErrorResponse(res, 400, "Please provide a valid email address");
+//     }
+//     // Insert the contact message
+//     const [newContact] = await db.insert(contactus).values({
+//       name,
+//       email,
+//       phone: phone || null,
+//       message,
+//     }).execute();
+//     SuccessResponse(res, {
+//       id: newContact.insertId,
+//       message: "Contact message submitted successfully"
+//     }, 201);
+//   } catch (error) {
+//     console.error("Error creating contact message:", error);
+//     ErrorResponse(res, "Failed to submit contact message", 500);
+//   }
+// };

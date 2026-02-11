@@ -10,7 +10,7 @@ import {
   bookings,
   users,
   tours,
-  tourSchedules, 
+  tourSchedules,
   admins
 } from "../../models/schema";
 import { eq } from "drizzle-orm";
@@ -99,7 +99,7 @@ export const changeStatus = async (req: Request, res: Response) => {
     await db
       .update(bookings)
       .set({ status: "cancelled" })
-      .where(eq(bookings.id, payment.bookingId));
+      .where(eq(bookings.id, payment.bookingId!));
 
     const userEmail = await db
       .select({ email: users.email })
@@ -125,7 +125,7 @@ export const changeStatus = async (req: Request, res: Response) => {
     await db
       .update(bookings)
       .set({ status: status === "confirmed" ? "confirmed" : "pending" })
-      .where(eq(bookings.id, payment.bookingId));
+      .where(eq(bookings.id, payment.bookingId!));
 
     // Send email when status is confirmed
     if (status === "confirmed") {
@@ -151,7 +151,7 @@ export const changeStatus = async (req: Request, res: Response) => {
         .innerJoin(bookingDetails, eq(bookings.id, bookingDetails.bookingId))
         .innerJoin(payments, eq(bookings.id, payments.bookingId))
         .innerJoin(tourSchedules, eq(bookings.tourId, tourSchedules.id))
-        .innerJoin(tours, eq(tourSchedules.tourId, tours.id)) 
+        .innerJoin(tours, eq(tourSchedules.tourId, tours.id))
         .where(eq(payments.id, id));
 
       console.log("Booking details query result:", bookingdetails.length, "records found");
@@ -159,17 +159,17 @@ export const changeStatus = async (req: Request, res: Response) => {
       if (bookingdetails.length > 0) {
         const details = bookingdetails[0];
         console.log("Sending confirmation email to:", details.email);
-        
-        const emailSubject = `Booking Confirmed - ${details.tourName}`;
-        
+
+        const emailSubject = `Booking Confirmed - ${details.tourTitle}`;
+
         // Format dates for better readability
-        const formatDate = (date: Date) => new Date(date).toLocaleDateString('en-US', { 
-          weekday: 'long', 
-          year: 'numeric', 
-          month: 'long', 
-          day: 'numeric' 
+        const formatDate = (date: Date) => new Date(date).toLocaleDateString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
         });
-        
+
         const emailMessage = `
 Dear ${details.fullName},
 
@@ -222,7 +222,7 @@ export const getAutoPayments = async (req: Request, res: Response) => {
 
 
 
-export const getAllPayments = async(req: Request, res: Response) => {
+export const getAllPayments = async (req: Request, res: Response) => {
   try {
     const rows = await db
       .select({
@@ -232,10 +232,10 @@ export const getAllPayments = async(req: Request, res: Response) => {
           tourId: tours.id,
           tourScheduleId: bookings.tourId,
 
-          tourScheduleDate: tourSchedules.date, 
+          tourScheduleDate: tourSchedules.date,
           tourScheduleStartDate: tourSchedules.startDate,
-          tourScheduleEndDate: tourSchedules.endDate, 
-          
+          tourScheduleEndDate: tourSchedules.endDate,
+
           userId: bookings.userId,
           status: bookings.status,
           discountNumber: bookings.discountNumber,
@@ -281,12 +281,12 @@ export const getAllPayments = async(req: Request, res: Response) => {
       .orderBy(payments.id); // Add ordering for consistency
 
     console.log("DEBUG - Raw query results count:", rows.length);
-    
+
     // Group by payment.id
     const grouped = Object.values(
       rows.reduce((acc: any, row) => {
         const paymentId = row.payment.id;
-        
+
         if (!acc[paymentId]) {
           console.log(`DEBUG - Processing payment ${paymentId}:`, {
             paymentId: row.payment.id,
@@ -294,7 +294,7 @@ export const getAllPayments = async(req: Request, res: Response) => {
             manualPaymentPaymentId: row.manualPayment?.paymentId,
             proofImage: row.manualPayment?.proofImage
           });
-          
+
           acc[paymentId] = {
             payment: row.payment,
             bookings: {
@@ -306,11 +306,11 @@ export const getAllPayments = async(req: Request, res: Response) => {
             bookingExtras: [],
             manualPayment: row.manualPayment ? {
               ...row.manualPayment,
-              type: row.manualPaymentType 
-            } : null, 
+              type: row.manualPaymentType
+            } : null,
           };
         }
-        
+
         // Add booking extras if they exist and aren't already added
         if (row.bookingExtras && row.bookingExtras.id) {
           const existingExtra = acc[paymentId].bookingExtras.find(
@@ -320,13 +320,13 @@ export const getAllPayments = async(req: Request, res: Response) => {
             acc[paymentId].bookingExtras.push(row.bookingExtras);
           }
         }
-        
+
         return acc;
       }, {})
     );
 
     console.log("DEBUG - Grouped payments count:", grouped.length);
-    
+
     SuccessResponse(res, { payments: grouped }, 200);
   } catch (error) {
     console.error("Error in getAllPayments:", error);

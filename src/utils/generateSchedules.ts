@@ -26,10 +26,10 @@ export async function generateTourSchedules({
 
   const schedules: {
     tourId: number;
-    date: string;
+    date: Date;
     availableSeats: number;
-    startDate: string;
-    endDate: string;
+    startDate: Date;
+    endDate: Date;
   }[] = [];
 
   let current = start;
@@ -47,10 +47,10 @@ export async function generateTourSchedules({
 
       schedules.push({
         tourId,
-        date: format(scheduleStart, 'yyyy-MM-dd HH:mm:ss'),
+        date: new Date(scheduleStart),
         availableSeats: maxUsers,
-        startDate: format(scheduleStart, 'yyyy-MM-dd HH:mm:ss'),
-        endDate: format(scheduleEnd, 'yyyy-MM-dd HH:mm:ss'),
+        startDate: new Date(scheduleStart),
+        endDate: new Date(scheduleEnd),
       });
     }
 
@@ -86,10 +86,10 @@ export async function generateTourSchedulesInTransaction(tx: any, {
 
   const schedules: {
     tourId: number;
-    date: string;
+    date: Date;
     availableSeats: number;
-    startDate: string;
-    endDate: string;
+    startDate: Date;
+    endDate: Date;
   }[] = [];
 
   let current = start;
@@ -105,13 +105,13 @@ export async function generateTourSchedulesInTransaction(tx: any, {
         durationHours
       );
 
-    schedules.push({
-  tourId,
-  date: new Date(scheduleStart),
-  availableSeats: maxUsers,
-  startDate: new Date(scheduleStart),
-  endDate: new Date(scheduleEnd),
-});
+      schedules.push({
+        tourId,
+        date: new Date(scheduleStart),
+        availableSeats: maxUsers,
+        startDate: new Date(scheduleStart),
+        endDate: new Date(scheduleEnd),
+      });
     }
 
     current = addDays(current, 1);

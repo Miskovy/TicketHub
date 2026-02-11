@@ -1,9 +1,9 @@
 import {
-    categoryMedical,
-    Medicals,
-    MedicalImages,
-    users,
-    medicalCategories
+  categoryMedical,
+  Medicals,
+  MedicalImages,
+  users,
+  medicalCategories
 } from "../../models/schema";
 
 import { Request, Response } from "express";
@@ -16,17 +16,15 @@ import { NotFound } from "../../Errors";
 import { saveFile } from "../../utils/saveFile";
 
 import { sendEmail } from "../../utils/sendEmails";
-
-import { Request } from "express";
 import multer from "multer";
 
 
 
 
 export const getMedicalCategories = async (req: Request, res: Response) => {
-    const data = await db.select().from(categoryMedical);
-    SuccessResponse(res, { categoriesMedical: data }, 200);
-    }
+  const data = await db.select().from(categoryMedical);
+  SuccessResponse(res, { categoriesMedical: data }, 200);
+}
 
 export const createMedicalCategory = async (req: Request, res: Response) => {
   const data = req.body;
@@ -41,48 +39,48 @@ export const updateCategoryMedical = async (req: Request, res: Response) => {
     .from(categoryMedical)
     .where(eq(categoryMedical.id, id));
   if (!categorymedical) throw new NotFound("Category Medical Not Found");
- 
+
   await db.update(categoryMedical).set(req.body).where(eq(categoryMedical.id, id));
   SuccessResponse(res, { message: "Country Updated Successfully" }, 200);
 };
 export const getMedicalCategoryById = async (req: Request, res: Response) => {
-     const id = Number(req.params.id);
-      const [categorymedical] = await db
+  const id = Number(req.params.id);
+  const [categorymedical] = await db
     .select()
     .from(categoryMedical)
     .where(eq(categoryMedical.id, id));
-    if (!categorymedical) throw new NotFound("Category Medical Not Found");
-    SuccessResponse(res, { categorymedical }, 200);
+  if (!categorymedical) throw new NotFound("Category Medical Not Found");
+  SuccessResponse(res, { categorymedical }, 200);
 }
 
 export const deleteMedicalCategory = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  
+
   // Check if medical category exists in the category_medical table
   const [category] = await db
     .select()
     .from(categoryMedical)
     .where(eq(categoryMedical.id, id));
-  
+
   if (!category) throw new NotFound("Medical Category Not Found");
 
   try {
     // Start a transaction to ensure data integrity
     await db.transaction(async (trx) => {
-      
+
       await trx.delete(medicalCategories)
         .where(eq(medicalCategories.categoryId, id));
 
-      
+
       await trx.delete(categoryMedical)
         .where(eq(categoryMedical.id, id));
     });
 
     SuccessResponse(res, { message: "Medical Category Deleted Successfully" }, 200);
-    
+
   } catch (error: any) {
     console.error("Delete error:", error);
-    
+
     return res.status(500).json({
       success: false,
       message: "Failed to delete medical category"
@@ -198,14 +196,14 @@ export const deleteMedicalCategory = async (req: Request, res: Response) => {
 
 export const getMedicalById = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  
+
   try {
     // Get the medical record
     const [medical] = await db
       .select()
       .from(Medicals)
       .where(eq(Medicals.id, id));
-    
+
     if (!medical) {
       throw new NotFound("Medical Not Found");
     }
@@ -255,7 +253,7 @@ export const getAllMedicals = async (req: Request, res: Response) => {
       .where(inArray(medicalCategories.medicalId, medicals.map(m => m.id)));
 
     // Get all unique category IDs from medical categories
-    const uniqueCategoryIds = [...new Set(medicalCategoriesData.map(mc => mc.categoryId))];
+    const uniqueCategoryIds = [...new Set(medicalCategoriesData.map(mc => mc.categoryId))].filter((id): id is number => id !== null);
 
     // Get all categories
     const categories = await db
@@ -270,11 +268,11 @@ export const getAllMedicals = async (req: Request, res: Response) => {
       .where(inArray(MedicalImages.medicalId, medicals.map(m => m.id)));
 
     // Group images by medical ID
-    const imagesByMedicalId = images.reduce((acc, img: any) => {
+    const imagesByMedicalId = images.reduce((acc: Record<number, any[]>, img: any) => {
       if (!acc[img.medicalId]) acc[img.medicalId] = [];
       acc[img.medicalId].push(img);
       return acc;
-    }, {});
+    }, {} as Record<number, any[]>);
 
     // Combine and process medical records
     const medicalsWithDetails = medicals.map(medical => ({
@@ -284,8 +282,8 @@ export const getAllMedicals = async (req: Request, res: Response) => {
       status: medical.status,
       userName: medical.userName,
       userEmail: medical.userEmail,
-      categories: categories.filter(cat => 
-        medicalCategoriesData.some(mc => 
+      categories: categories.filter(cat =>
+        medicalCategoriesData.some(mc =>
           mc.medicalId === medical.id && mc.categoryId === cat.id
         )
       ),
@@ -307,8 +305,8 @@ export const getAllMedicals = async (req: Request, res: Response) => {
 };
 
 export const acceptMedicalRequest = async (req: Request, res: Response) => {
-   const fileData = req.file as Express.Multer.File;
-  const { medicalId, price } = req.body; 
+  const fileData = req.file as Express.Multer.File;
+  const { medicalId, price } = req.body;
   //const fileData = req.file as Express.Multer.File;
   try {
     // Validation
@@ -323,29 +321,28 @@ export const acceptMedicalRequest = async (req: Request, res: Response) => {
     if (fileData) {
       const { url, type } = await saveFile(fileData, medicalId, req);
       documentUrl = url;
-       documentType = type === 'image' || type === 'file' ? type : null;
+      documentType = type === 'image' || type === 'file' ? type : null;
     } else {
       return res.status(400).json({ error: "File is required" });
     }
 
     // Update medical record
     const result = await db.update(Medicals)
-    .set({ 
-    status: 'accepted',
-    price,
-    documentUrl,
-    documentType,
-    acceptedAt: new Date()
-  })
-  .where(eq(Medicals.id, medicalId));
+      .set({
+        status: 'accepted',
+        price,
+        documentUrl,
+        documentType: documentType as "image" | "file" | null
+      })
+      .where(eq(Medicals.id, medicalId));
 
-// Retrieve the updated medical record
-const [medical] = await db.select().from(Medicals).where(eq(Medicals.id, medicalId));
+    // Retrieve the updated medical record
+    const [medical] = await db.select().from(Medicals).where(eq(Medicals.id, medicalId));
 
-// Get user email by joining with users table
+    // Get user email by joining with users table
     const [user] = await db.select({ email: users.email })
       .from(users)
-      .where(eq(users.id, medical.userId));
+      .where(eq(users.id, medical.userId!));
 
     // Send email notification if user exists and has email
     if (user?.email) {
@@ -363,23 +360,23 @@ const [medical] = await db.select().from(Medicals).where(eq(Medicals.id, medical
           
           Thank you for using our service.
         `;
-        
+
         await sendEmail(user.email, emailSubject, emailText);
       } catch (emailError) {
         console.error("Error sending email:", emailError);
       }
     }
 
-res.json({
-  success: true,
-  medical
-});
+    res.json({
+      success: true,
+      medical
+    });
   } catch (error: any) {
     console.error("Error:", error);
     res.status(500).json({ error: "Internal server error: " + error.message });
   }
 };
-  
+
 
 export const rejectMedicalRequest = async (req: Request, res: Response) => {
   const { medicalId, reason } = req.body;
@@ -392,7 +389,7 @@ export const rejectMedicalRequest = async (req: Request, res: Response) => {
 
     // Update medical record to rejected status
     const result = await db.update(Medicals)
-      .set({ status: 'rejected',  rejectionReason: reason || null })
+      .set({ status: 'rejected', rejectionReason: reason || null })
       .where(eq(Medicals.id, medicalId));
 
     // Retrieve the updated medical record
@@ -401,7 +398,7 @@ export const rejectMedicalRequest = async (req: Request, res: Response) => {
     // Get user email by joining with users table
     const [user] = await db.select({ email: users.email })
       .from(users)
-      .where(eq(users.id, medical.userId));
+      .where(eq(users.id, medical.userId!));
 
     // Send email notification if user exists and has email
     if (user?.email) {
@@ -416,7 +413,7 @@ export const rejectMedicalRequest = async (req: Request, res: Response) => {
           
           Thank you for using our service.
         `;
-        
+
         await sendEmail(user.email, emailSubject, emailText);
       } catch (emailError) {
         console.error("Error sending email:", emailError);

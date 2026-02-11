@@ -31,10 +31,10 @@ function generateTourSchedules(_a) {
                 const scheduleEnd = (0, date_fns_1.addHours)((0, date_fns_1.addDays)(scheduleStart, durationDays), durationHours);
                 schedules.push({
                     tourId,
-                    date: (0, date_fns_1.format)(scheduleStart, 'yyyy-MM-dd HH:mm:ss'),
+                    date: new Date(scheduleStart),
                     availableSeats: maxUsers,
-                    startDate: (0, date_fns_1.format)(scheduleStart, 'yyyy-MM-dd HH:mm:ss'),
-                    endDate: (0, date_fns_1.format)(scheduleEnd, 'yyyy-MM-dd HH:mm:ss'),
+                    startDate: new Date(scheduleStart),
+                    endDate: new Date(scheduleEnd),
                 });
             }
             current = (0, date_fns_1.addDays)(current, 1);

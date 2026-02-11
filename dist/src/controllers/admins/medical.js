@@ -227,7 +227,7 @@ const getAllMedicals = (req, res) => __awaiter(void 0, void 0, void 0, function*
             .from(schema_1.medicalCategories)
             .where((0, drizzle_orm_1.inArray)(schema_1.medicalCategories.medicalId, medicals.map(m => m.id)));
         // Get all unique category IDs from medical categories
-        const uniqueCategoryIds = [...new Set(medicalCategoriesData.map(mc => mc.categoryId))];
+        const uniqueCategoryIds = [...new Set(medicalCategoriesData.map(mc => mc.categoryId))].filter((id) => id !== null);
         // Get all categories
         const categories = yield db_1.db
             .select()
@@ -296,8 +296,7 @@ const acceptMedicalRequest = (req, res) => __awaiter(void 0, void 0, void 0, fun
             status: 'accepted',
             price,
             documentUrl,
-            documentType,
-            acceptedAt: new Date()
+            documentType: documentType
         })
             .where((0, drizzle_orm_1.eq)(schema_1.Medicals.id, medicalId));
         // Retrieve the updated medical record

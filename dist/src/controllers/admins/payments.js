@@ -140,7 +140,7 @@ const changeStatus = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             if (bookingdetails.length > 0) {
                 const details = bookingdetails[0];
                 console.log("Sending confirmation email to:", details.email);
-                const emailSubject = `Booking Confirmed - ${details.tourName}`;
+                const emailSubject = `Booking Confirmed - ${details.tourTitle}`;
                 // Format dates for better readability
                 const formatDate = (date) => new Date(date).toLocaleDateString('en-US', {
                     weekday: 'long',
