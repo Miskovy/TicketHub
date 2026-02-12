@@ -337,6 +337,7 @@ export const getTourById = async (req: Request, res: Response) => {
       points: tours.points,
       durationDays: tours.durationDays,
       durationHours: tours.durationHours,
+      files: tours.file,
       country: countries.name,
       city: cites.name,
       maxUsers: tours.maxUsers,
