@@ -37,13 +37,13 @@ import { deletePhotoFromServer } from "../../utils/deleteImage";
 import { format } from 'date-fns';
 
 export const formatDate = (date: Date) => {
-  return date.toISOString().split('T')[0]; 
+  return date.toISOString().split('T')[0];
 };
 
- const formatDateSQL = (date: Date | string) => {
-    const d = new Date(date);
-    return format(d, 'yyyy-MM-dd');
-  };
+const formatDateSQL = (date: Date | string) => {
+  const d = new Date(date);
+  return format(d, 'yyyy-MM-dd');
+};
 
 export const getAllTours = async (req: Request, res: Response) => {
   const toursData = await db
@@ -51,19 +51,19 @@ export const getAllTours = async (req: Request, res: Response) => {
       tours,
       startDate: tours.startDate,
       endDate: tours.endDate,
-      countryName: countries.name, 
-      cityName: cites.name, 
+      countryName: countries.name,
+      cityName: cites.name,
     })
     .from(tours)
     .leftJoin(countries, eq(tours.country, countries.id))
     .leftJoin(cites, eq(tours.city, cites.id));
 
-  SuccessResponse(res, { 
-   tours: toursData.map(tour => ({
-    ...tour.tours,
-    startDate: tour.tours.startDate,
-    endDate: tour.tours.endDate  
-  })),
+  SuccessResponse(res, {
+    tours: toursData.map(tour => ({
+      ...tour.tours,
+      startDate: tour.tours.startDate,
+      endDate: tour.tours.endDate
+    })),
   }, 200);
 }
 
@@ -89,6 +89,7 @@ export const getTourById = async (req: Request, res: Response) => {
       country: countries.id,
       city: cites.id,
       maxUsers: tours.maxUsers,
+      file: tours.file,
       category: categories.id,
       categoryName: categories.name,
       price: {
@@ -117,7 +118,7 @@ export const getTourById = async (req: Request, res: Response) => {
     faq,
     discounts,
     schedules,
-    daysOfWeek, 
+    daysOfWeek,
     extrasWithPrices,
     images,
     promoCodes,
@@ -129,13 +130,13 @@ export const getTourById = async (req: Request, res: Response) => {
     db.select().from(tourFAQ).where(eq(tourFAQ.tourId, tourId)),
     db.select().from(tourDiscounts).where(eq(tourDiscounts.tourId, tourId)),
     db.select().from(tourSchedules).where(eq(tourSchedules.tourId, tourId)),
-    
-   
+
+
     db
       .select({ dayOfWeek: tourDaysOfWeek.dayOfWeek })
       .from(tourDaysOfWeek)
       .where(eq(tourDaysOfWeek.tourId, tourId)),
-    
+
     db
       .select({
         id: extras.id,
@@ -154,18 +155,18 @@ export const getTourById = async (req: Request, res: Response) => {
       .leftJoin(currencies, eq(tourPrice.currencyId, currencies.id))
       .where(eq(tourExtras.tourId, tourId)),
     db
-      .select({ 
+      .select({
         id: tourImages.id,
-        imagePath: tourImages.imagePath 
+        imagePath: tourImages.imagePath
       })
       .from(tourImages)
       .where(eq(tourImages.tourId, tourId)),
     db
-      .select({ 
+      .select({
         id: promoCode.id,
-        code: promoCode.code 
+        code: promoCode.code
       })
-      .from(tourPromoCode) 
+      .from(tourPromoCode)
       .leftJoin(promoCode, eq(tourPromoCode.promoCodeId, promoCode.id))
       .where(eq(tourPromoCode.tourId, tourId)),
   ]);
@@ -175,7 +176,7 @@ export const getTourById = async (req: Request, res: Response) => {
     {
       ...mainTour,
       startDate: mainTour.startDate.toISOString().split('T')[0],
-      endDate:  mainTour.endDate.toISOString().split('T')[0],
+      endDate: mainTour.endDate.toISOString().split('T')[0],
       highlights: highlights.map((h) => h.content),
       includes: includes.map((i) => i.content),
       excludes: excludes.map((e) => e.content),
@@ -198,7 +199,7 @@ export const getTourById = async (req: Request, res: Response) => {
         code: p.code
       })),
       discounts,
-      daysOfWeek: daysOfWeek.map((d: any) => d.dayOfWeek), 
+      daysOfWeek: daysOfWeek.map((d: any) => d.dayOfWeek),
       extras: extrasWithPrices,
       images: images.map((img: any) => ({
         id: img.id,
@@ -211,11 +212,11 @@ export const getTourById = async (req: Request, res: Response) => {
 
 export const createTour = async (req: Request, res: Response) => {
   const data = req.body;
-  
+
   // Start transaction - ALL operations must be inside this transaction
   await db.transaction(async (tx) => {
     console.log("before add");
-    
+
     // Insert main tour using transaction
     const [newTour] = await tx
       .insert(tours)
@@ -238,10 +239,11 @@ export const createTour = async (req: Request, res: Response) => {
         durationHours: data.durationHours,
         country: data.country,
         city: data.city,
-        maxUsers: data.maxUsers, 
+        maxUsers: data.maxUsers,
+        file: data.file ? await saveBase64Image(data.file, uuid(), req, "tourFiles") : null,
       })
       .$returningId();
-    
+
     console.log("tour added success");
     const tourId = newTour.id;
 
@@ -359,14 +361,14 @@ export const createTour = async (req: Request, res: Response) => {
     if (data.promoCodeIds && data.promoCodeIds.length > 0) {
       // Validate that the promo codes exist using transaction
       const existingPromoCodes = await tx
-        .select({ 
+        .select({
           id: promoCode.id
         })
         .from(promoCode)
         .where(inArray(promoCode.id, data.promoCodeIds));
 
       const existingPromoCodeIds = existingPromoCodes.map(pc => pc.id);
-      const invalidPromoCodeIds = data.promoCodeIds.filter((id: number) => 
+      const invalidPromoCodeIds = data.promoCodeIds.filter((id: number) =>
         !existingPromoCodeIds.includes(id)
       );
 
@@ -425,21 +427,21 @@ export const addData = async (req: Request, res: Response) => {
 
 export const deleteTour = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
-  
+
   // Check if tour exists
   const [tour] = await db.select().from(tours).where(eq(tours.id, id));
   if (!tour) throw new NotFound("Tour Not Found");
-  
+
   try {
     // Check for existing bookings through tour schedules
     const existingSchedules = await db
       .select({ id: tourSchedules.id })
       .from(tourSchedules)
       .where(eq(tourSchedules.tourId, id));
-    
+
     if (existingSchedules.length > 0) {
       const scheduleIds = existingSchedules.map(s => s.id);
-      
+
       // Check for confirmed bookings
       const confirmedBookings = await db
         .select()
@@ -450,11 +452,11 @@ export const deleteTour = async (req: Request, res: Response) => {
             eq(bookings.status, 'confirmed')
           )
         );
-      
+
       if (confirmedBookings.length > 0) {
         throw new Error("Cannot delete tour with confirmed bookings");
       }
-      
+
       // Delete all bookings and related data for this tour
       for (const booking of await db.select().from(bookings).where(inArray(bookings.tourId, scheduleIds))) {
         await db.delete(bookingDetails).where(eq(bookingDetails.bookingId, booking.id));
@@ -464,15 +466,24 @@ export const deleteTour = async (req: Request, res: Response) => {
       }
       await db.delete(bookings).where(inArray(bookings.tourId, scheduleIds));
     }
+    // Delete tour file from server if it exists
+    if (tour.file) {
+      try {
+        await deletePhotoFromServer(new URL(tour.file).pathname);
+      } catch (error) {
+        console.error("Failed to delete tour file:", error);
+      }
+    }
+
     // Delete main tour image from server
     await deletePhotoFromServer(new URL(tour.mainImage).pathname);
-    
+
     // Get and delete tour images
     const tourImagesList = await db
       .select()
       .from(tourImages)
       .where(eq(tourImages.tourId, id));
-    
+
     // Delete tour images from server
     await Promise.all(
       tourImagesList.map(async (tourImage) => {
@@ -481,13 +492,13 @@ export const deleteTour = async (req: Request, res: Response) => {
         }
       })
     );
-    
+
     // Get and delete tour itinerary images
     const tourItineraryList = await db
       .select()
       .from(tourItinerary)
       .where(eq(tourItinerary.tourId, id));
-    
+
     // Delete tour itinerary images from server
     await Promise.all(
       tourItineraryList.map(async (itinerary) => {
@@ -496,7 +507,7 @@ export const deleteTour = async (req: Request, res: Response) => {
         }
       })
     );
-    
+
     // Delete all related records first (to avoid foreign key constraint errors)
     // Note: Some tables have cascade delete, but we'll delete explicitly for consistency
     await db.delete(tourImages).where(eq(tourImages.tourId, id));
@@ -508,17 +519,17 @@ export const deleteTour = async (req: Request, res: Response) => {
     await db.delete(tourFAQ).where(eq(tourFAQ.tourId, id));
     await db.delete(tourPromoCode).where(eq(tourPromoCode.tourId, id));
     await db.delete(tourExtras).where(eq(tourExtras.tourId, id));
-    
+
     // These should cascade automatically but delete explicitly to be safe
     await db.delete(tourDiscounts).where(eq(tourDiscounts.tourId, id));
     await db.delete(tourDaysOfWeek).where(eq(tourDaysOfWeek.tourId, id));
     await db.delete(tourSchedules).where(eq(tourSchedules.tourId, id));
-    
+
     // Finally delete the tour itself
     await db.delete(tours).where(eq(tours.id, id));
-    
+
     SuccessResponse(res, { message: "Tour Deleted Successfully" }, 200);
-    
+
   } catch (error) {
     console.error("Error deleting tour:", error);
     throw error; // Re-throw to be handled by your error middleware
@@ -538,7 +549,7 @@ export const updateTour = async (req: Request, res: Response) => {
 
     // Update main tour details
     const updateData: any = {};
-    
+
     if (data.title) updateData.title = data.title;
     if (data.mainImage) {
       updateData.mainImage = await saveBase64Image(data.mainImage, uuid(), req, "tours");
@@ -558,6 +569,20 @@ export const updateTour = async (req: Request, res: Response) => {
     if (data.country) updateData.country = data.country;
     if (data.city) updateData.city = data.city;
     if (data.maxUsers) updateData.maxUsers = data.maxUsers;
+    if (data.file !== undefined) {
+      // Delete old file from server if it exists
+      if (existingTour.file) {
+        try {
+          await deletePhotoFromServer(new URL(existingTour.file).pathname);
+        } catch (error) {
+          console.error("Failed to delete old tour file:", error);
+        }
+      }
+      // Save new file or set to null
+      updateData.file = data.file
+        ? await saveBase64Image(data.file, uuid(), req, "tourFiles")
+        : null;
+    }
 
     // Update tour using transaction
     await tx.update(tours).set(updateData).where(eq(tours.id, tourId));
@@ -598,7 +623,7 @@ export const updateTour = async (req: Request, res: Response) => {
     // Handle images with transaction
     if (data.images !== undefined) {
       const { added = [], deleted = [] } = data.images;
-      
+
       // Handle deleted images
       if (deleted.length > 0) {
         // Get the images to delete using transaction
@@ -607,7 +632,7 @@ export const updateTour = async (req: Request, res: Response) => {
           .from(tourImages)
           .where(and(
             eq(tourImages.tourId, tourId),
-            inArray(tourImages.id, deleted) 
+            inArray(tourImages.id, deleted)
           ));
 
         // Delete physical files from server
@@ -666,7 +691,7 @@ export const updateTour = async (req: Request, res: Response) => {
     // Handle itinerary with transaction
     if (data.itinerary !== undefined) {
       const { added = [], deleted = [], updated = [] } = data.itinerary;
-      
+
       // Handle deletions first
       if (deleted.length > 0) {
         // Get existing itinerary items to delete their images using transaction
@@ -705,26 +730,26 @@ export const updateTour = async (req: Request, res: Response) => {
             title: item.title,
             describtion: item.description
           };
-          
+
           // Only update image if a new one is provided
           if (item.imagePath) {
             // Delete old image if it exists using transaction
             const [existingItem] = await tx.select()
               .from(tourItinerary)
               .where(eq(tourItinerary.id, item.id));
-            
+
             if (existingItem?.imagePath) {
               await deletePhotoFromServer(new URL(existingItem.imagePath).pathname);
             }
-            
+
             updateData.imagePath = await saveBase64Image(
-              item.imagePath, 
-              uuid(), 
-              req, 
+              item.imagePath,
+              uuid(),
+              req,
               "itineraryImages"
             );
           }
-          
+
           // Update using transaction
           await tx.update(tourItinerary)
             .set(updateData)
@@ -738,56 +763,56 @@ export const updateTour = async (req: Request, res: Response) => {
           added.map(async (item: any) => ({
             title: item.title,
             describtion: item.description,
-            imagePath: item.imagePath ? 
-              await saveBase64Image(item.imagePath, uuid(), req, "itineraryImages") : 
+            imagePath: item.imagePath ?
+              await saveBase64Image(item.imagePath, uuid(), req, "itineraryImages") :
               null,
             tourId,
           }))
         );
-        
+
         await tx.insert(tourItinerary).values(newItems);
       }
     }
 
     // Handle promo codes with transaction
     // Handle promo codes with transaction
-if (data.promoCodeIds && data.promoCodeIds.length > 0) {
-  // Validate that the promo codes exist using transaction
-  const existingPromoCodes = await tx
-    .select({ 
-      id: promoCode.id
-    })
-    .from(promoCode)
-    .where(inArray(promoCode.id, data.promoCodeIds));
+    if (data.promoCodeIds && data.promoCodeIds.length > 0) {
+      // Validate that the promo codes exist using transaction
+      const existingPromoCodes = await tx
+        .select({
+          id: promoCode.id
+        })
+        .from(promoCode)
+        .where(inArray(promoCode.id, data.promoCodeIds));
 
-  const existingPromoCodeIds = existingPromoCodes.map(pc => pc.id);
-  const invalidPromoCodeIds = data.promoCodeIds.filter((id: number) => 
-    !existingPromoCodeIds.includes(id)
-  );
+      const existingPromoCodeIds = existingPromoCodes.map(pc => pc.id);
+      const invalidPromoCodeIds = data.promoCodeIds.filter((id: number) =>
+        !existingPromoCodeIds.includes(id)
+      );
 
-  // Handle invalid promo codes
-  if (invalidPromoCodeIds.length > 0) {
-    throw new Error(`Invalid promo code IDs: ${invalidPromoCodeIds.join(', ')}`);
-  }
+      // Handle invalid promo codes
+      if (invalidPromoCodeIds.length > 0) {
+        throw new Error(`Invalid promo code IDs: ${invalidPromoCodeIds.join(', ')}`);
+      }
 
-  // First, remove ALL existing associations for this tour
-  await tx
-    .delete(tourPromoCode)
-    .where(eq(tourPromoCode.tourId, tourId));
+      // First, remove ALL existing associations for this tour
+      await tx
+        .delete(tourPromoCode)
+        .where(eq(tourPromoCode.tourId, tourId));
 
-  // Then, insert the new associations
-  await tx.insert(tourPromoCode).values(
-    data.promoCodeIds.map((promoCodeId: number) => ({
-      tourId,
-      promoCodeId
-    }))
-  );
-} else {
-  // If no promo codes are provided, remove all existing associations
-  await tx
-    .delete(tourPromoCode)
-    .where(eq(tourPromoCode.tourId, tourId));
-}
+      // Then, insert the new associations
+      await tx.insert(tourPromoCode).values(
+        data.promoCodeIds.map((promoCodeId: number) => ({
+          tourId,
+          promoCodeId
+        }))
+      );
+    } else {
+      // If no promo codes are provided, remove all existing associations
+      await tx
+        .delete(tourPromoCode)
+        .where(eq(tourPromoCode.tourId, tourId));
+    }
 
 
     if (data.faq !== undefined) {
@@ -806,18 +831,18 @@ if (data.promoCodeIds && data.promoCodeIds.length > 0) {
     if (data.daysOfWeek !== undefined) {
       // Delete existing days
       await tx.delete(tourDaysOfWeek).where(eq(tourDaysOfWeek.tourId, tourId));
-      
+
       // Insert new days if provided
       if (data.daysOfWeek.length > 0) {
         // Convert to lowercase to match enum values
-        const formattedDays = data.daysOfWeek.map((day: string) => 
+        const formattedDays = data.daysOfWeek.map((day: string) =>
           day.toLowerCase().trim()
         );
-        
+
         await tx.insert(tourDaysOfWeek).values(
-          formattedDays.map((day: string) => ({ 
-            dayOfWeek: day, 
-            tourId 
+          formattedDays.map((day: string) => ({
+            dayOfWeek: day,
+            tourId
           }))
         );
       }
@@ -849,39 +874,39 @@ if (data.promoCodeIds && data.promoCodeIds.length > 0) {
       }
     }
 
-   
-   if (data.startDate || data.endDate || data.daysOfWeek) {
 
-  // Convert dates to proper SQL format
-  const formatDateForSQL = (date: Date | string) => {
-    const d = new Date(date);
-    return format(d, 'yyyy-MM-dd HH:mm:ss'); 
-  };
+    if (data.startDate || data.endDate || data.daysOfWeek) {
 
-  const startDateFormatted = data.startDate 
-    ? formatDateForSQL(data.startDate)
-    : formatDateForSQL(existingTour.startDate);
-  
-  const endDateFormatted = data.endDate 
-    ? formatDateForSQL(data.endDate)
-    : formatDateForSQL(existingTour.endDate);
+      // Convert dates to proper SQL format
+      const formatDateForSQL = (date: Date | string) => {
+        const d = new Date(date);
+        return format(d, 'yyyy-MM-dd HH:mm:ss');
+      };
 
-  // modified generateTourSchedules function with tx parameter
-  await generateTourSchedulesInTransaction(tx, {
-    tourId,
-    startDate: startDateFormatted,
-    endDate: endDateFormatted,
-    daysOfWeek: data.daysOfWeek || [], 
-    maxUsers: data.maxUsers || existingTour.maxUsers,
-    durationDays: data.durationDays || existingTour.durationDays,
-    durationHours: data.durationHours || existingTour.durationHours,
-  });
-}
+      const startDateFormatted = data.startDate
+        ? formatDateForSQL(data.startDate)
+        : formatDateForSQL(existingTour.startDate);
+
+      const endDateFormatted = data.endDate
+        ? formatDateForSQL(data.endDate)
+        : formatDateForSQL(existingTour.endDate);
+
+      // modified generateTourSchedules function with tx parameter
+      await generateTourSchedulesInTransaction(tx, {
+        tourId,
+        startDate: startDateFormatted,
+        endDate: endDateFormatted,
+        daysOfWeek: data.daysOfWeek || [],
+        maxUsers: data.maxUsers || existingTour.maxUsers,
+        durationDays: data.durationDays || existingTour.durationDays,
+        durationHours: data.durationHours || existingTour.durationHours,
+      });
+    }
     // If we reach here, all operations succeeded
     console.log('All tour update operations completed successfully');
   });
 
-  
+
 
   // Only send response if transaction succeeded
   SuccessResponse(res, { message: "Tour Updated Successfully" }, 200);
@@ -909,7 +934,7 @@ export const updateTourStatus = async (req: Request, res: Response) => {
 export const updateTourFeatured = async (req: Request, res: Response) => {
   const { tourId, featured } = req.body;
 
-    // validation tour if not exist 
+  // validation tour if not exist 
   const [tour] = await db
     .select()
     .from(tours)

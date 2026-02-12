@@ -11,24 +11,24 @@ export async function saveBase64Image(
   try {
     // Clean the base64 string - remove any whitespace
     const cleanBase64 = base64.trim();
-    
+
     // More flexible regex to handle different base64 formats
     const matches = cleanBase64.match(/^data:([^;]+);base64,(.+)$/);
-    
+
     if (!matches || matches.length !== 3) {
       throw new Error(`Invalid base64 format. Expected format: data:mime/type;base64,data`);
     }
-    
+
     const mimeType = matches[1];
     const base64Data = matches[2];
-    
+
     // Validate that we have actual base64 data
     if (!base64Data || base64Data.length === 0) {
       throw new Error("No base64 data found");
     }
-    
-    
-    let ext = 'jpg'; 
+
+
+    let ext = 'jpg';
     if (mimeType.includes('/')) {
       const mimeExt = mimeType.split('/')[1];
       // Handle common MIME types and their extensions
@@ -49,12 +49,15 @@ export async function saveBase64Image(
         case 'bmp':
           ext = 'bmp';
           break;
+        case 'pdf':
+          ext = 'pdf';
+          break;
         default:
           // If unknown MIME type, try to use it directly or fallback to jpg
           ext = mimeExt.length <= 4 ? mimeExt : 'jpg';
       }
     }
-    
+
     // Validate base64 data by attempting to decode it
     let buffer: Buffer;
     try {
@@ -69,12 +72,12 @@ export async function saveBase64Image(
     } catch (bufferError) {
       throw new Error(`Failed to decode base64 data: ${bufferError instanceof Error ? bufferError.message : 'Unknown error'}`);
     }
-    
+
     // Generate unique filename to avoid conflicts
     const timestamp = Date.now();
     const fileName = `${userId}_${timestamp}.${ext}`;
     const uploadsDir = path.join(__dirname, "../..", "uploads", folder);
-    
+
     // Create folder if it doesn't exist
     try {
       await fs.mkdir(uploadsDir, { recursive: true });
@@ -82,9 +85,9 @@ export async function saveBase64Image(
       console.error("Failed to create directory:", err);
       throw new Error(`Failed to create upload directory: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
-    
+
     const filePath = path.join(uploadsDir, fileName);
-    
+
     // Write the file
     try {
       await fs.writeFile(filePath, buffer);
@@ -92,7 +95,7 @@ export async function saveBase64Image(
       console.error("Failed to write image file:", err);
       throw new Error(`Failed to write image file: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
-    
+
     // Verify file was written successfully
     try {
       const stats = await fs.stat(filePath);
@@ -102,11 +105,11 @@ export async function saveBase64Image(
     } catch (err) {
       throw new Error(`File verification failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
-    
+
     // Return full URL
     const imageUrl = `${req.protocol}://${req.get("host")}/uploads/${folder}/${fileName}`;
     return imageUrl;
-    
+
   } catch (error) {
     console.error("saveBase64Image error:", error);
     // Re-throw with more context

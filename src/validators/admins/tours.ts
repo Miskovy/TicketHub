@@ -16,6 +16,7 @@ export const createTourSchema = z.object({
     city: z.number(),
     maxUsers: z.number().int().positive(),
     categoryId: z.number().int().positive(),
+    file: z.string().optional(),
 
     prices: z
       .array(
@@ -114,6 +115,7 @@ export const updateTourSchema = z.object({
     city: z.number().optional(),
     maxUsers: z.number().int().positive().optional(),
     categoryId: z.number().int().positive().optional(),
+    file: z.string().nullable().optional(),
 
     prices: z
       .array(
@@ -139,7 +141,7 @@ export const updateTourSchema = z.object({
         })
       )
       .optional(),
-      */ 
+      */
     faq: z
       .array(
         z.object({

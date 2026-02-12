@@ -71,6 +71,7 @@ export const tours = mysqlTable("tours", {
   country: int("country").references(() => countries.id),
   city: int("city").references(() => cites.id),
   maxUsers: int("max_users").notNull(),
+  file: varchar("file", { length: 255 }),
 });
 
 export const tourImages = mysqlTable("tour_images", {
