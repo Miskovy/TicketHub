@@ -198,7 +198,10 @@ export const getTourById = async (req: Request, res: Response) => {
         id: p.id,
         code: p.code
       })),
-      discounts,
+      discounts: discounts.map((d) => ({
+        ...d,
+        value: Number(d.value),
+      })),
       daysOfWeek: daysOfWeek.map((d: any) => d.dayOfWeek),
       extras: extrasWithPrices,
       images: images.map((img: any) => ({

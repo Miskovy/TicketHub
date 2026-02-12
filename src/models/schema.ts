@@ -91,7 +91,7 @@ export const tourDiscounts = mysqlTable("tour_discounts", {
     "infant",
   ]).notNull(),
   type: mysqlEnum("type", ["percent", "fixed"]).notNull(),
-  value: decimal("value", { precision: 5, scale: 2 }).notNull(),
+  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
   minPeople: int("min_people").default(0),
   maxPeople: int("max_people"),
   kindBy: mysqlEnum("kind_by", ["person", "total"]).notNull(),
@@ -122,7 +122,7 @@ export const tourSchedules = mysqlTable("tour_schedules", {
 
   date: date("date").notNull(),
   availableSeats: int("available_seats").notNull(),
-  startDate: timestamp("start_date").notNull(), 
+  startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date").notNull(),
 });
 
@@ -229,7 +229,7 @@ export const bookings = mysqlTable("bookings", {
   discountNumber: decimal("discount_number", { precision: 10, scale: 2 }),
   location: varchar("location", { length: 255 }),
   address: varchar("address", { length: 255 }),
- createdAt: timestamp("created_at").default(getCurrentEgyptTime()), 
+  createdAt: timestamp("created_at").default(getCurrentEgyptTime()),
 });
 
 export const bookingDetails = mysqlTable("booking_details", {
@@ -323,8 +323,8 @@ export const categoryMedical = mysqlTable("category_medical", {
 export const Medicals = mysqlTable("medicals", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("user_id").references(() => users.id),
-  fullName: varchar("full_name", { length: 255 }), 
-  phoneNumber: varchar("phone_number", { length: 20 }), 
+  fullName: varchar("full_name", { length: 255 }),
+  phoneNumber: varchar("phone_number", { length: 20 }),
   describtion: text("describtion").notNull(),
   status: mysqlEnum("status", ["pending", "accepted", "rejected"]).default("pending"),
   rejectionReason: text("rejection_reason"),
