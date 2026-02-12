@@ -228,7 +228,8 @@ export const getTourById = async (req: Request, res: Response) => {
         adult: tourPrice.adult,
         child: tourPrice.child,
         infant: tourPrice.infant,
-        currency: currencies.name
+        currency: currencies.name,
+        currencySymbol: currencies.symbol,
       },
     })
     .from(tours)
@@ -1300,6 +1301,7 @@ export const getToursWithEssentialInfo = async (req: Request, res: Response) => 
       child: tourPrice.child,
       infant: tourPrice.infant,
       currency: currencies.name,
+      currencySymbol: currencies.symbol,
     })
     .from(tourPrice)
     .leftJoin(currencies, eq(tourPrice.currencyId, currencies.id))
@@ -1349,6 +1351,24 @@ export const getToursWithEssentialInfo = async (req: Request, res: Response) => 
     return acc;
   }, {} as Record<number, any[]>);
 
+  // Get tour days of week for all tours in one query
+  const allTourDays = tourIds.length > 0 ? await db
+    .select({
+      tourId: tourDaysOfWeek.tourId,
+      day: tourDaysOfWeek.dayOfWeek,
+    })
+    .from(tourDaysOfWeek)
+    .where(inArray(tourDaysOfWeek.tourId, tourIds)) : [];
+
+  // Group days by tourId
+  const daysByTourId = allTourDays.reduce((acc, day) => {
+    if (!acc[day.tourId]) {
+      acc[day.tourId] = [];
+    }
+    acc[day.tourId].push(day.day);
+    return acc;
+  }, {} as Record<number, string[]>);
+
   // Combine tours with their prices and filtered schedules
   const toursWithSchedules = toursList.map(tour => ({
     id: tour.id,
@@ -1359,7 +1379,8 @@ export const getToursWithEssentialInfo = async (req: Request, res: Response) => 
     country: tour.country,
     city: tour.city,
     price: pricesByTourId[tour.id] || null,
-    schedules: schedulesByTourId[tour.id] || []
+    schedules: schedulesByTourId[tour.id] || [],
+    daysOfWeek: daysByTourId[tour.id] || []
   }));
 
   SuccessResponse(res, toursWithSchedules, 200);
