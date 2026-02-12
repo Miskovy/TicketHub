@@ -76,62 +76,122 @@ export const getImages = async (req: Request, res: Response) => {
 export const getFeaturedTours = async (req: Request, res: Response) => {
   const currentDate = new Date();
 
-  const tourData = await db
+  // Fetch featured tours WITHOUT joining tourPrice to avoid row duplication
+  const toursList = await db
     .select({
       id: tours.id,
       title: tours.title,
+      mainImage: tours.mainImage,
+      startDate: tours.startDate,
+      endDate: tours.endDate,
       country: countries.name,
       city: cites.name,
-      imagePath: tours.mainImage,
-      price: tourPrice.adult,
-      discount: tourDiscounts.value,
-      discribtion: tours.describtion,
-      duration: tours.durationDays,
-      startDate: tours.startDate,
-      scheduleId: tourSchedules.id,
-      scheduleDate: tourSchedules.date
     })
     .from(tours)
-    .leftJoin(tourPrice, eq(tours.id, tourPrice.tourId))
+    .leftJoin(categories, eq(tours.categoryId, categories.id))
     .leftJoin(cites, eq(cites.id, tours.city))
     .leftJoin(countries, eq(countries.id, tours.country))
-    .leftJoin(tourDiscounts, eq(tourDiscounts.tourId, tours.id))
-    .leftJoin(tourSchedules, eq(tours.id, tourSchedules.tourId))
-    .where(and(
-      eq(tours.featured, true),
-      eq(tours.status, true),
-      gt(tourSchedules.date, currentDate)
-    ));
+    .where(
+      and(
+        eq(tours.featured, true),
+        eq(tours.status, true),
+        gt(tours.endDate, currentDate)
+      )
+    );
 
-  // Group by tour
-  const groupedTours = tourData.reduce((acc: Record<string, any>, row: any) => {
-    if (!acc[row.id]) {
-      acc[row.id] = {
-        id: row.id,
-        title: row.title,
-        country: row.country,
-        city: row.city,
-        imagePath: row.imagePath,
-        price: row.price,
-        discount: row.discount,
-        discribtion: row.discribtion,
-        duration: row.duration,
-        startDate: row.startDate,
-        schedules: [],
+  const tourIds = toursList.map(t => t.id);
+
+  // Fetch prices separately to avoid duplication
+  const allPrices = tourIds.length > 0 ? await db
+    .select({
+      tourId: tourPrice.tourId,
+      adult: tourPrice.adult,
+      child: tourPrice.child,
+      infant: tourPrice.infant,
+      currency: currencies.name,
+      currencySymbol: currencies.symbol,
+    })
+    .from(tourPrice)
+    .leftJoin(currencies, eq(tourPrice.currencyId, currencies.id))
+    .where(inArray(tourPrice.tourId, tourIds)) : [];
+
+  // Group prices by tourId (take the first price entry per tour)
+  const pricesByTourId = allPrices.reduce((acc, price) => {
+    if (!acc[price.tourId]) {
+      acc[price.tourId] = {
+        adult: price.adult,
+        child: price.child,
+        infant: price.infant,
+        currency: price.currency,
+        currencySymbol: price.currencySymbol,
       };
     }
+    return acc;
+  }, {} as Record<number, { adult: any; child: any; infant: any; currency: any; currencySymbol: any }>);
 
-    if (row.scheduleId && row.scheduleDate > currentDate) {
-      acc[row.id].schedules.push({
-        id: row.scheduleId,
-        date: row.scheduleDate,
+  // Get schedules for all tours in one query
+  const allSchedules = tourIds.length > 0 ? await db
+    .select({
+      tourId: tourSchedules.tourId,
+      id: tourSchedules.id,
+      date: tourSchedules.date,
+      availableSeats: tourSchedules.availableSeats,
+      startDate: tourSchedules.startDate,
+      endDate: tourSchedules.endDate,
+    })
+    .from(tourSchedules)
+    .where(inArray(tourSchedules.tourId, tourIds)) : [];
+
+  // Group schedules by tourId and filter by current date
+  const schedulesByTourId = allSchedules.reduce((acc, schedule) => {
+    if (schedule.date > currentDate) {
+      if (!acc[schedule.tourId]) {
+        acc[schedule.tourId] = [];
+      }
+      acc[schedule.tourId].push({
+        id: schedule.id,
+        date: schedule.date,
+        availableSeats: schedule.availableSeats,
+        startDate: schedule.startDate,
+        endDate: schedule.endDate
       });
     }
-
     return acc;
-  }, {} as Record<string, any>);
+  }, {} as Record<number, any[]>);
 
-  SuccessResponse(res, { tours: Object.values(groupedTours) }, 200);
+  // Get tour days of week for all tours in one query
+  const allTourDays = tourIds.length > 0 ? await db
+    .select({
+      tourId: tourDaysOfWeek.tourId,
+      day: tourDaysOfWeek.dayOfWeek,
+    })
+    .from(tourDaysOfWeek)
+    .where(inArray(tourDaysOfWeek.tourId, tourIds)) : [];
+
+  // Group days by tourId
+  const daysByTourId = allTourDays.reduce((acc, day) => {
+    if (!acc[day.tourId]) {
+      acc[day.tourId] = [];
+    }
+    acc[day.tourId].push(day.day);
+    return acc;
+  }, {} as Record<number, string[]>);
+
+  // Combine tours with their prices and filtered schedules
+  const toursWithSchedules = toursList.map(tour => ({
+    id: tour.id,
+    title: tour.title,
+    mainImage: tour.mainImage,
+    startDate: tour.startDate,
+    endDate: tour.endDate,
+    country: tour.country,
+    city: tour.city,
+    price: pricesByTourId[tour.id] || null,
+    schedules: schedulesByTourId[tour.id] || [],
+    daysOfWeek: daysByTourId[tour.id] || []
+  }));
+
+  SuccessResponse(res, toursWithSchedules, 200);
 };
 
 
