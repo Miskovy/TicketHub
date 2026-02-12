@@ -275,7 +275,8 @@ export const getTourById = async (req: Request, res: Response) => {
         child: tourPrice.child,
         infant: tourPrice.infant,
         currencyId: tourPrice.currencyId,
-        currencyName: currencies.name
+        currencyName: currencies.name,
+        currencySymbol: currencies.symbol,
       }
     })
       .from(tourExtras)
@@ -1315,10 +1316,11 @@ export const getToursWithEssentialInfo = async (req: Request, res: Response) => 
         child: price.child,
         infant: price.infant,
         currency: price.currency,
+        currencySymbol: price.currencySymbol,
       };
     }
     return acc;
-  }, {} as Record<number, { adult: any; child: any; infant: any; currency: any }>);
+  }, {} as Record<number, { adult: any; child: any; infant: any; currency: any; currencySymbol: any }>);
 
   // Get schedules for all tours in one query
   const allSchedules = tourIds.length > 0 ? await db
