@@ -343,6 +343,7 @@ export const getTourById = async (req: Request, res: Response) => {
       maxUsers: tours.maxUsers,
       category: categories.name,
       tourScheduleId: tourSchedules.id,
+      policy: tours.policy,
       price: {
         adult: tourPrice.adult,
         child: tourPrice.child,
