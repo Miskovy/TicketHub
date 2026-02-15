@@ -36,6 +36,7 @@
     "passport": "^0.7.0",
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
+    "socket.io": "^4.8.3",
     "uuid": "^11.1.0",
     "zod": "^3.25.74"
   },
@@ -51,6 +52,7 @@
     "@types/passport": "^1.0.17",
     "@types/passport-facebook": "^3.0.3",
     "@types/passport-google-oauth20": "^2.0.16",
+    "@types/socket.io": "^3.0.1",
     "drizzle-kit": "^0.31.4",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"

@@ -46,6 +46,7 @@ import { AuthenticatedRequest } from "../../types/custom";
 import { title } from "process";
 import { privateDecrypt } from "crypto";
 import { sendEmail } from "../../utils/sendEmails";
+import { getIO } from "../../socket";
 
 
 // format start date to YYYY-MM-DD
@@ -799,12 +800,25 @@ Booking System Notification
         for (const adminEmail of adminEmails) {
           try {
             await sendEmail(adminEmail, emailSubject, emailMessage);
-            console.log(`Notification sent to admin: ${adminEmail}`);
           } catch (emailError) {
-            console.error(`Failed to send email to admin ${adminEmail}:`, emailError);
-            // Don't fail the whole operation if email fails
+            console.error(`Failed to send email to ${adminEmail}:`, emailError);
           }
         }
+
+        // Emit socket notification to super admins
+        try {
+          const io = getIO();
+          io.to("super_admins").emit("new_booking", {
+            id: newBooking.id,
+            customerName: fullName,
+            tourName: tourName,
+            amount: totalAmount,
+            date: new Date(),
+          });
+        } catch (socketError) {
+          console.error("Failed to emit socket notification:", socketError);
+        }
+
       }
 
       // Return success response

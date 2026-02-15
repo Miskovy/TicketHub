@@ -10,6 +10,10 @@ import passport from "passport";
 import cookieParser from "cookie-parser";
 import AppRoute from "./routes";
 import path from "path";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import { initializeSocket } from "./socket";
+
 dotenv.config();
 
 const app = express();
@@ -40,8 +44,20 @@ app.use((req, res, next) => {
   throw new NotFound("route not found");
 });
 app.use(errorHandler);
+
+const httpServer = createServer(app);
+export const io = new Server(httpServer, {
+  cors: {
+    origin: "*", // Allow all origins (adjust as needed for security)
+    methods: ["GET", "POST"]
+  }
+});
+
+// Initialize Socket.IO logic
+initializeSocket(io);
+
 // Start server
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(
     `✅ Server running on http://localhost:${PORT} [${getCurrentEgyptTime()}]`
   );
