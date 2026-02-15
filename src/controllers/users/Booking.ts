@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
 import { db } from "../../models/db";
 import {
-  bookings,users, tours, tourSchedules,
+  bookings, users, tours, tourSchedules,
   bookingDetails,
   bookingExtras,
   extras
 } from "../../models/schema";
-import { eq , and , lt , gte} from "drizzle-orm";
+import { eq, and, lt, gte } from "drizzle-orm";
 import { SuccessResponse } from "../../utils/response";
-import { NotFound,UnauthorizedError } from "../../Errors";
+import { NotFound, UnauthorizedError } from "../../Errors";
 import { AuthenticatedRequest } from "../../types/custom";
 import { BadRequest } from "../../Errors/BadRequest";
 
@@ -25,6 +25,7 @@ export const getUserBookings = async (req: AuthenticatedRequest, res: Response) 
     .select({
       bookings: bookings,
       bookingDetails: bookingDetails,
+      tour: tours, // Select tour details
       bookingExtras: {
         id: bookingExtras.id,
         bookingId: bookingExtras.bookingId,
@@ -54,6 +55,7 @@ export const getUserBookings = async (req: AuthenticatedRequest, res: Response) 
         acc[bookingId] = {
           bookings: row.bookings,
           bookingDetails: row.bookingDetails,
+          tour: row.tour, // Include tour in the grouped object
           bookingExtras: [],
         };
       }
@@ -63,7 +65,7 @@ export const getUserBookings = async (req: AuthenticatedRequest, res: Response) 
       }
 
       return acc;
-    }, {} as Record<number, { bookings: any; bookingDetails: any; bookingExtras: any[] }>)
+    }, {} as Record<number, { bookings: any; bookingDetails: any; tour: any; bookingExtras: any[] }>)
   );
 
   // تقسيم حسب الحالة
@@ -77,7 +79,7 @@ export const getUserBookings = async (req: AuthenticatedRequest, res: Response) 
   const pastBookings = groupedBookings.filter(item => new Date(item.bookings.createdAt) < now);
   const upcomingBookings = groupedBookings.filter(item => new Date(item.bookings.createdAt) > now);
 
-  SuccessResponse(res, { history: pastBookings, current: currentBookings, upcoming: upcomingBookings}, 200);
+  SuccessResponse(res, { history: pastBookings, current: currentBookings, upcoming: upcomingBookings }, 200);
 };
 
 
