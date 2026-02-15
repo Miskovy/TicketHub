@@ -90,6 +90,7 @@ export const getTourById = async (req: Request, res: Response) => {
       city: cites.id,
       maxUsers: tours.maxUsers,
       file: tours.file,
+      policy: tours.policy,
       category: categories.id,
       categoryName: categories.name,
       price: {
@@ -244,6 +245,7 @@ export const createTour = async (req: Request, res: Response) => {
         city: data.city,
         maxUsers: data.maxUsers,
         file: data.file ? await saveBase64Image(data.file, uuid(), req, "tourFiles") : null,
+        policy: data.policy,
       })
       .$returningId();
 
@@ -572,6 +574,7 @@ export const updateTour = async (req: Request, res: Response) => {
     if (data.country) updateData.country = data.country;
     if (data.city) updateData.city = data.city;
     if (data.maxUsers) updateData.maxUsers = data.maxUsers;
+    if (data.policy) updateData.policy = data.policy;
     if (data.file !== undefined) {
       // Delete old file from server if it exists
       if (existingTour.file) {
