@@ -6,7 +6,14 @@ let io: Server;
 export const initializeSocket = (socketIO: Server) => {
     io = socketIO;
     io.use((socket: Socket, next) => {
-        const token = socket.handshake.auth.token;
+        let token = socket.handshake.auth.token;
+
+        if (!token && socket.handshake.headers.authorization) {
+            const parts = socket.handshake.headers.authorization.split(' ');
+            if (parts.length === 2 && parts[0] === 'Bearer') {
+                token = parts[1];
+            }
+        }
 
         if (!token) {
             return next(new Error("Authentication error: Token required"));
