@@ -4,9 +4,11 @@ import {
   bookings, users, tours, tourSchedules,
   bookingDetails,
   bookingExtras,
-  extras
+  extras,
+  tourIncludes,
+  tourExcludes
 } from "../../models/schema";
-import { eq, and, lt, gte } from "drizzle-orm";
+import { eq, and, lt, gte, inArray, desc } from "drizzle-orm";
 import { SuccessResponse } from "../../utils/response";
 import { NotFound, UnauthorizedError } from "../../Errors";
 import { AuthenticatedRequest } from "../../types/custom";
@@ -25,7 +27,7 @@ export const getUserBookings = async (req: AuthenticatedRequest, res: Response) 
     .select({
       bookings: bookings,
       bookingDetails: bookingDetails,
-      tour: tours, // Select tour details
+      tour: tours,
       bookingExtras: {
         id: bookingExtras.id,
         bookingId: bookingExtras.bookingId,
@@ -44,29 +46,54 @@ export const getUserBookings = async (req: AuthenticatedRequest, res: Response) 
     .leftJoin(extras, eq(bookingExtras.extraId, extras.id))
     .innerJoin(bookingDetails, eq(bookings.id, bookingDetails.bookingId))
     .where(eq(bookings.userId, userId))
+    .orderBy(desc(bookings.createdAt))
     .execute();
 
   // تجميع البيانات بحيث bookingExtras تبقى array لكل booking
-  const groupedBookings = Object.values(
-    userBookingsRaw.reduce((acc, row) => {
-      const bookingId = row.bookings.id;
+  const groupedBookingsMap = userBookingsRaw.reduce((acc, row) => {
+    const bookingId = row.bookings.id;
 
-      if (!acc[bookingId]) {
-        acc[bookingId] = {
-          bookings: row.bookings,
-          bookingDetails: row.bookingDetails,
-          tour: row.tour, // Include tour in the grouped object
-          bookingExtras: [],
-        };
-      }
+    if (!acc[bookingId]) {
+      acc[bookingId] = {
+        bookings: row.bookings,
+        bookingDetails: row.bookingDetails,
+        tour: {
+          ...row.tour,
+          includes: [] as string[],
+          excludes: [] as string[]
+        },
+        bookingExtras: [],
+      };
+    }
 
-      if (row.bookingExtras && row.bookingExtras.id) {
-        acc[bookingId].bookingExtras.push(row.bookingExtras);
-      }
+    if (row.bookingExtras && row.bookingExtras.id) {
+      acc[bookingId].bookingExtras.push(row.bookingExtras);
+    }
 
-      return acc;
-    }, {} as Record<number, { bookings: any; bookingDetails: any; tour: any; bookingExtras: any[] }>)
-  );
+    return acc;
+  }, {} as Record<number, { bookings: any; bookingDetails: any; tour: any; bookingExtras: any[] }>);
+
+  // Extract unique tour IDs to fetch includes and excludes
+  const tourIds = [...new Set(Object.values(groupedBookingsMap).map(b => b.tour.id))];
+
+  if (tourIds.length > 0) {
+    const [includesData, excludesData] = await Promise.all([
+      db.select().from(tourIncludes).where(inArray(tourIncludes.tourId, tourIds)),
+      db.select().from(tourExcludes).where(inArray(tourExcludes.tourId, tourIds))
+    ]);
+
+    // Map includes and excludes to tours
+    Object.values(groupedBookingsMap).forEach(booking => {
+      booking.tour.includes = includesData
+        .filter(inc => inc.tourId === booking.tour.id)
+        .map(inc => inc.content);
+      booking.tour.excludes = excludesData
+        .filter(exc => exc.tourId === booking.tour.id)
+        .map(exc => exc.content);
+    });
+  }
+
+  const groupedBookings = Object.values(groupedBookingsMap);
 
   // تقسيم حسب الحالة
   const currentBookings = {

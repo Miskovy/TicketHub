@@ -307,5 +307,6 @@ exports.notifications = (0, mysql_core_1.mysqlTable)("notifications", {
     title: (0, mysql_core_1.varchar)("title", { length: 255 }).notNull(),
     message: (0, mysql_core_1.text)("message").notNull(),
     isRead: (0, mysql_core_1.boolean)("is_read").default(false),
+    isSeen: (0, mysql_core_1.boolean)("is_seen").default(false),
     createdAt: (0, mysql_core_1.timestamp)("created_at").default((0, timeZone_1.getCurrentEgyptTime)()),
 });

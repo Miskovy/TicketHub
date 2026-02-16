@@ -3,7 +3,7 @@ import { Response } from "express";
 import { db } from "../../models/db";
 import { notifications } from "../../models/schema";
 import { SuccessResponse } from "../../utils/response";
-import { eq } from "drizzle-orm";
+import { eq, desc, and, count } from "drizzle-orm";
 import { BadRequest } from "../../Errors/BadRequest";
 
 export const getNotifications = async (req: AuthenticatedRequest, res: Response) => {
@@ -13,12 +13,34 @@ export const getNotifications = async (req: AuthenticatedRequest, res: Response)
     }
 
     try {
-        const AllNotifications = await db.select().from(notifications).where(eq(notifications.adminId, adminId));
-        const unReadNotifications = AllNotifications.filter((notification) => !notification.isRead);
-        return SuccessResponse(res, { AllNotifications, unReadNotifications }, 200);
+        const AllNotifications = await db
+            .select()
+            .from(notifications)
+            .where(eq(notifications.adminId, adminId))
+            .orderBy(desc(notifications.createdAt));
+
+        const unSeenNotificationsCount = AllNotifications.filter(
+            (notification) => !notification.isSeen
+        ).length;
+
+        // Mark all fetched notifications as seen
+        if (AllNotifications.length > 0) {
+            await db
+                .update(notifications)
+                .set({ isSeen: true })
+                .where(eq(notifications.adminId, adminId));
+        }
+
+        return SuccessResponse(
+            res,
+            { AllNotifications, unSeenNotificationsCount },
+            200
+        );
     } catch (error) {
         console.error("Error getting notifications:", error);
-        throw new BadRequest(error instanceof Error ? error.message : "Failed to get notifications");
+        throw new BadRequest(
+            error instanceof Error ? error.message : "Failed to get notifications"
+        );
     }
 };
 
@@ -51,5 +73,29 @@ export const deleteNotification = async (req: AuthenticatedRequest, res: Respons
     } catch (error) {
         console.error("Error deleting notification:", error);
         throw new BadRequest(error instanceof Error ? error.message : "Failed to delete notification");
+    }
+};
+
+export const getUnSeenNotificationsCount = async (req: AuthenticatedRequest, res: Response) => {
+    const adminId = req.user?.id || 0;
+    if (!adminId) {
+        return SuccessResponse(res, { unSeenNotificationsCount: 0 }, 200);
+    }
+
+    try {
+        const [result] = await db
+            .select({ count: count() })
+            .from(notifications)
+            .where(
+                and(
+                    eq(notifications.adminId, adminId),
+                    eq(notifications.isSeen, false)
+                )
+            );
+
+        return SuccessResponse(res, { unSeenNotificationsCount: result.count }, 200);
+    } catch (error) {
+        console.error("Error getting unSeenNotificationsCount:", error);
+        throw new BadRequest(error instanceof Error ? error.message : "Failed to get unSeenNotificationsCount");
     }
 };

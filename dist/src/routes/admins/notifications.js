@@ -7,6 +7,7 @@ const authenticated_1 = require("../../middlewares/authenticated");
 const router = (0, express_1.Router)();
 router.use(authenticated_1.authenticated);
 router.get("/", (0, catchAsync_1.catchAsync)(notifications_1.getNotifications));
+router.get("/unseen/count", (0, catchAsync_1.catchAsync)(notifications_1.getUnSeenNotificationsCount));
 router.patch("/:notificationId/read", (0, catchAsync_1.catchAsync)(notifications_1.markNotificationAsRead));
 router.delete("/:notificationId", (0, catchAsync_1.catchAsync)(notifications_1.deleteNotification));
 exports.default = router;

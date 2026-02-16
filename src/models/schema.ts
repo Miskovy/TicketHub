@@ -363,5 +363,6 @@ export const notifications = mysqlTable("notifications", {
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   isRead: boolean("is_read").default(false),
+  isSeen: boolean("is_seen").default(false),
   createdAt: timestamp("created_at").default(getCurrentEgyptTime()),
 });

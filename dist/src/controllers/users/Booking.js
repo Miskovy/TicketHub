@@ -37,7 +37,7 @@ const getUserBookings = (req, res) => __awaiter(void 0, void 0, void 0, function
         .select({
         bookings: schema_1.bookings,
         bookingDetails: schema_1.bookingDetails,
-        tour: schema_1.tours, // Select tour details
+        tour: schema_1.tours,
         bookingExtras: {
             id: schema_1.bookingExtras.id,
             bookingId: schema_1.bookingExtras.bookingId,
@@ -56,15 +56,16 @@ const getUserBookings = (req, res) => __awaiter(void 0, void 0, void 0, function
         .leftJoin(schema_1.extras, (0, drizzle_orm_1.eq)(schema_1.bookingExtras.extraId, schema_1.extras.id))
         .innerJoin(schema_1.bookingDetails, (0, drizzle_orm_1.eq)(schema_1.bookings.id, schema_1.bookingDetails.bookingId))
         .where((0, drizzle_orm_1.eq)(schema_1.bookings.userId, userId))
+        .orderBy((0, drizzle_orm_1.desc)(schema_1.bookings.createdAt))
         .execute();
     // تجميع البيانات بحيث bookingExtras تبقى array لكل booking
-    const groupedBookings = Object.values(userBookingsRaw.reduce((acc, row) => {
+    const groupedBookingsMap = userBookingsRaw.reduce((acc, row) => {
         const bookingId = row.bookings.id;
         if (!acc[bookingId]) {
             acc[bookingId] = {
                 bookings: row.bookings,
                 bookingDetails: row.bookingDetails,
-                tour: row.tour, // Include tour in the grouped object
+                tour: Object.assign(Object.assign({}, row.tour), { includes: [], excludes: [] }),
                 bookingExtras: [],
             };
         }
@@ -72,7 +73,25 @@ const getUserBookings = (req, res) => __awaiter(void 0, void 0, void 0, function
             acc[bookingId].bookingExtras.push(row.bookingExtras);
         }
         return acc;
-    }, {}));
+    }, {});
+    // Extract unique tour IDs to fetch includes and excludes
+    const tourIds = [...new Set(Object.values(groupedBookingsMap).map(b => b.tour.id))];
+    if (tourIds.length > 0) {
+        const [includesData, excludesData] = yield Promise.all([
+            db_1.db.select().from(schema_1.tourIncludes).where((0, drizzle_orm_1.inArray)(schema_1.tourIncludes.tourId, tourIds)),
+            db_1.db.select().from(schema_1.tourExcludes).where((0, drizzle_orm_1.inArray)(schema_1.tourExcludes.tourId, tourIds))
+        ]);
+        // Map includes and excludes to tours
+        Object.values(groupedBookingsMap).forEach(booking => {
+            booking.tour.includes = includesData
+                .filter(inc => inc.tourId === booking.tour.id)
+                .map(inc => inc.content);
+            booking.tour.excludes = excludesData
+                .filter(exc => exc.tourId === booking.tour.id)
+                .map(exc => exc.content);
+        });
+    }
+    const groupedBookings = Object.values(groupedBookingsMap);
     // تقسيم حسب الحالة
     const currentBookings = {
         pending: groupedBookings.filter(item => item.bookings.status === "pending"),
