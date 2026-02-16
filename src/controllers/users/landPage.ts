@@ -47,6 +47,7 @@ import { title } from "process";
 import { privateDecrypt } from "crypto";
 import { sendEmail } from "../../utils/sendEmails";
 import { getIO } from "../../socket";
+import { notifyAdmins } from "../../utils/notificationUtils";
 
 
 // format start date to YYYY-MM-DD
@@ -805,19 +806,11 @@ Booking System Notification
           }
         }
 
-        // Emit socket notification to super admins
-        try {
-          const io = getIO();
-          io.to("super_admins").emit("new_booking", {
-            id: newBooking.id,
-            customerName: fullName,
-            tourName: tourName,
-            amount: totalAmount,
-            date: new Date(),
-          });
-        } catch (socketError) {
-          console.error("Failed to emit socket notification:", socketError);
-        }
+        // Emit socket notification and save to DB for super admins
+        await notifyAdmins(
+          `New Booking - ${tourName}`,
+          `A new booking has been created by ${fullName} for ${tourName}. Amount: ${totalAmount}`
+        );
 
       }
 

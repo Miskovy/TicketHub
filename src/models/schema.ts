@@ -355,3 +355,13 @@ export const contactus = mysqlTable("contactus", {
   phone: varchar("phone", { length: 20 }),
   message: text("message").notNull()
 });
+
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("user_id").references(() => users.id),
+  adminId: int("admin_id").references(() => admins.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  message: text("message").notNull(),
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").default(getCurrentEgyptTime()),
+});

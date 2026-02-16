@@ -66,6 +66,8 @@ const getTourById = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         country: schema_1.countries.id,
         city: schema_1.cites.id,
         maxUsers: schema_1.tours.maxUsers,
+        file: schema_1.tours.file,
+        policy: schema_1.tours.policy,
         category: schema_1.categories.id,
         categoryName: schema_1.categories.name,
         price: {
@@ -144,7 +146,7 @@ const getTourById = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
         })), faq: faq.map((f) => ({ question: f.question, answer: f.answer })), promoCode: promoCodes.map((p) => ({
             id: p.id,
             code: p.code
-        })), discounts, daysOfWeek: daysOfWeek.map((d) => d.dayOfWeek), extras: extrasWithPrices, images: images.map((img) => ({
+        })), discounts: discounts.map((d) => (Object.assign(Object.assign({}, d), { value: Number(d.value) }))), daysOfWeek: daysOfWeek.map((d) => d.dayOfWeek), extras: extrasWithPrices, images: images.map((img) => ({
             id: img.id,
             url: img.imagePath
         })) }), 200);
@@ -179,6 +181,8 @@ const createTour = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             country: data.country,
             city: data.city,
             maxUsers: data.maxUsers,
+            file: data.file ? yield (0, handleImages_1.saveBase64Image)(data.file, (0, uuid_1.v4)(), req, "tourFiles") : null,
+            policy: data.policy,
         })
             .$returningId();
         console.log("tour added success");
@@ -357,6 +361,15 @@ const deleteTour = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             }
             yield db_1.db.delete(schema_1.bookings).where((0, drizzle_orm_1.inArray)(schema_1.bookings.tourId, scheduleIds));
         }
+        // Delete tour file from server if it exists
+        if (tour.file) {
+            try {
+                yield (0, deleteImage_1.deletePhotoFromServer)(new URL(tour.file).pathname);
+            }
+            catch (error) {
+                console.error("Failed to delete tour file:", error);
+            }
+        }
         // Delete main tour image from server
         yield (0, deleteImage_1.deletePhotoFromServer)(new URL(tour.mainImage).pathname);
         // Get and delete tour images
@@ -452,6 +465,23 @@ const updateTour = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             updateData.city = data.city;
         if (data.maxUsers)
             updateData.maxUsers = data.maxUsers;
+        if (data.policy)
+            updateData.policy = data.policy;
+        if (data.file !== undefined) {
+            // Delete old file from server if it exists
+            if (existingTour.file) {
+                try {
+                    yield (0, deleteImage_1.deletePhotoFromServer)(new URL(existingTour.file).pathname);
+                }
+                catch (error) {
+                    console.error("Failed to delete old tour file:", error);
+                }
+            }
+            // Save new file or set to null
+            updateData.file = data.file
+                ? yield (0, handleImages_1.saveBase64Image)(data.file, (0, uuid_1.v4)(), req, "tourFiles")
+                : null;
+        }
         // Update tour using transaction
         yield tx.update(schema_1.tours).set(updateData).where((0, drizzle_orm_1.eq)(schema_1.tours.id, tourId));
         // Update related content if provided (ALL using tx instead of db)

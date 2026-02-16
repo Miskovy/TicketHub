@@ -37,6 +37,7 @@ const getUserBookings = (req, res) => __awaiter(void 0, void 0, void 0, function
         .select({
         bookings: schema_1.bookings,
         bookingDetails: schema_1.bookingDetails,
+        tour: schema_1.tours, // Select tour details
         bookingExtras: {
             id: schema_1.bookingExtras.id,
             bookingId: schema_1.bookingExtras.bookingId,
@@ -63,6 +64,7 @@ const getUserBookings = (req, res) => __awaiter(void 0, void 0, void 0, function
             acc[bookingId] = {
                 bookings: row.bookings,
                 bookingDetails: row.bookingDetails,
+                tour: row.tour, // Include tour in the grouped object
                 bookingExtras: [],
             };
         }

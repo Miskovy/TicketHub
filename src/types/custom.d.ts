@@ -1,7 +1,7 @@
 import { Request } from "express";
 
 export interface AppUser {
-  id: string;
+  id: number;
   roles?: string[];
 }
 
@@ -12,8 +12,11 @@ export interface AuthenticatedRequest extends Request {
 
 declare global {
   namespace Express {
+    // eslint-disable-next-line @typescript-eslint/no-empty-interface
+    interface User extends AppUser { }
+
     interface Request {
-      user?: AppUser;
-    } // extend default `Us
+      user?: User;
+    }
   }
 }

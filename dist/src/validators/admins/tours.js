@@ -18,6 +18,7 @@ exports.createTourSchema = zod_1.z.object({
         city: zod_1.z.number(),
         maxUsers: zod_1.z.number().int().positive(),
         categoryId: zod_1.z.number().int().positive(),
+        file: zod_1.z.string().optional(),
         prices: zod_1.z
             .array(zod_1.z.object({
             adult: zod_1.z.number().nonnegative(),
@@ -94,6 +95,7 @@ exports.updateTourSchema = zod_1.z.object({
         city: zod_1.z.number().optional(),
         maxUsers: zod_1.z.number().int().positive().optional(),
         categoryId: zod_1.z.number().int().positive().optional(),
+        file: zod_1.z.string().nullable().optional(),
         prices: zod_1.z
             .array(zod_1.z.object({
             adult: zod_1.z.number().nonnegative(),

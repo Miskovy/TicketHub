@@ -52,6 +52,9 @@ function saveBase64Image(base64, userId, req, folder) {
                     case 'bmp':
                         ext = 'bmp';
                         break;
+                    case 'pdf':
+                        ext = 'pdf';
+                        break;
                     default:
                         // If unknown MIME type, try to use it directly or fallback to jpg
                         ext = mimeExt.length <= 4 ? mimeExt : 'jpg';

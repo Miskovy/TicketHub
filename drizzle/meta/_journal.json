@@ -64,6 +64,13 @@
       "when": 1754486498869,
       "tag": "0008_steady_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1771228257176,
+      "tag": "0009_curly_master_chief",
+      "breakpoints": true
     }
   ]
 }
