@@ -7,13 +7,13 @@ import { eq } from "drizzle-orm";
 import { BadRequest } from "../../Errors/BadRequest";
 
 export const getNotifications = async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user?.id || 0;
-    if (!userId) {
+    const adminId = req.user?.id || 0;
+    if (!adminId) {
         return SuccessResponse(res, { AllNotifications: [], unReadNotifications: [] }, 200);
     }
 
     try {
-        const AllNotifications = await db.select().from(notifications).where(eq(notifications.userId, userId));
+        const AllNotifications = await db.select().from(notifications).where(eq(notifications.adminId, adminId));
         const unReadNotifications = AllNotifications.filter((notification) => !notification.isRead);
         return SuccessResponse(res, { AllNotifications, unReadNotifications }, 200);
     } catch (error) {
