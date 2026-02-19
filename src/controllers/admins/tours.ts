@@ -882,6 +882,8 @@ export const updateTour = async (req: Request, res: Response) => {
 
 
     if (data.startDate || data.endDate || data.daysOfWeek) {
+      // Delete existing schedules before regenerating
+      await tx.delete(tourSchedules).where(eq(tourSchedules.tourId, tourId));
 
       // Convert dates to proper SQL format
       const formatDateForSQL = (date: Date | string) => {
