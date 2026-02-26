@@ -88,6 +88,7 @@ export const getFeaturedTours = async (req: Request, res: Response) => {
       endDate: tours.endDate,
       country: countries.name,
       city: cites.name,
+      description: tours.describtion,
     })
     .from(tours)
     .leftJoin(categories, eq(tours.categoryId, categories.id))
@@ -1407,6 +1408,7 @@ export const getToursWithEssentialInfo = async (req: Request, res: Response) => 
       endDate: tours.endDate,
       country: countries.name,
       city: cites.name,
+      description: tours.describtion,
     })
     .from(tours)
     .leftJoin(categories, eq(tours.categoryId, categories.id))
